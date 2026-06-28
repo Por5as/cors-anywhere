@@ -20,7 +20,11 @@ function parseEnvList(env) {
 var checkRateLimit = require('./lib/rate-limit')(process.env.CORSANYWHERE_RATELIMIT);
 
 var cors_proxy = require('./lib/cors-anywhere');
-cors_proxy.createServer({
+
+// ============================================
+// CREATE THE CORS ANYWHERE SERVER
+// ============================================
+var corsProxy = cors_proxy.createServer({
   originBlacklist: originBlacklist,
   originWhitelist: originWhitelist,
   requireHeader: ['origin', 'x-requested-with'],
@@ -44,6 +48,31 @@ cors_proxy.createServer({
     // Do not add X-Forwarded-For, etc. headers, because Heroku already adds it.
     xfwd: false,
   },
-}).listen(port, host, function() {
-  console.log('Running CORS Anywhere on ' + host + ':' + port);
+});
+
+// ============================================
+// ADD EXPRESS FOR HEALTH CHECK + PROXY MOUNTING
+// ============================================
+const express = require('express');
+const app = express();
+
+// Health check endpoint (mount before proxy)
+app.get('/health', (req, res) => {
+  res.status(200).send('OK');
+});
+
+// Mount CORS Anywhere on /proxy
+app.use('/proxy', (req, res) => {
+  // Remove the /proxy prefix from the URL so CORS Anywhere handles it correctly
+  req.url = req.url.replace(/^\/proxy/, '');
+  corsProxy.emit('request', req, res);
+});
+
+// ============================================
+// START SERVER
+// ============================================
+app.listen(port, host, function() {
+  console.log('🚀 Server running on ' + host + ':' + port);
+  console.log('📍 CORS Proxy: /proxy?url=...');
+  console.log('📍 Health Check: /health');
 });
