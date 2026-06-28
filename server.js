@@ -51,20 +51,20 @@ var corsProxy = cors_proxy.createServer({
 });
 
 // ============================================
-// ADD EXPRESS FOR HEALTH CHECK + PROXY MOUNTING
+// ADD EXPRESS FOR HEALTH CHECK
 // ============================================
 const express = require('express');
 const app = express();
 
-// Health check endpoint (mount before proxy)
+// Health check endpoint – MUST come before the proxy handler
 app.get('/health', (req, res) => {
   res.status(200).send('OK');
 });
 
-// Mount CORS Anywhere on /proxy
-app.use('/proxy', (req, res) => {
-  // Remove the /proxy prefix from the URL so CORS Anywhere handles it correctly
-  req.url = req.url.replace(/^\/proxy/, '');
+// ============================================
+// CORS ANYWHERE PROXY (handles everything else)
+// ============================================
+app.use('/', (req, res) => {
   corsProxy.emit('request', req, res);
 });
 
@@ -73,6 +73,6 @@ app.use('/proxy', (req, res) => {
 // ============================================
 app.listen(port, host, function() {
   console.log('🚀 Server running on ' + host + ':' + port);
-  console.log('📍 CORS Proxy: /proxy?url=...');
+  console.log('📍 CORS Proxy: /?url=...');
   console.log('📍 Health Check: /health');
 });
